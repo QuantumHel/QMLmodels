@@ -1,0 +1,1 @@
+from qmlmodels.loss_functions.square_loss import square_loss

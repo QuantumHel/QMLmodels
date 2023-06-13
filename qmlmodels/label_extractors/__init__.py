@@ -1,0 +1,1 @@
+from qmlmodels.label_extractors.parity_readout import parity_readout
