@@ -1,4 +1,6 @@
 # QMLmodels
+> This package does not yet have extensive enough tests, use on your own risk as results may be wrong.
+
 A package containing templates and parts for Quantum Machine Learning models.
 
 ## Instalation

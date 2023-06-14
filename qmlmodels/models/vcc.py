@@ -1,8 +1,9 @@
 from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
 from qiskit import Aer, transpile
 from scipy.optimize import minimize
-from qmlmodels.utils import combine_to_superposition, group_by_label
+from qmlmodels.utils import combine_to_superposition, group_by_label, group_by_info_qubit
 import random
+import math
 
 class VCC:
 	def __init__(
@@ -56,8 +57,12 @@ class VCC:
 				loss = self._normal_loss(X, y, shots)
 			case "label_superpositions":
 				loss = self._label_superpositions_loss(X, y, shots)
+			case "classical_label_superpositions":
+				loss = self._classical_label_superpositions_loss(X, y, shots)
 			case "full_superposition":
 				loss = self._full_superposition_loss(X, y, shots)
+			case "classical_full_superposition":
+				loss = self._classical_full_superpositions_loss(X, y, shots)
 			case _:
 				raise ValueError("training_mode has to be 'training_mode', 'label_superpositions', or 'full_superposition'.")
 
@@ -111,8 +116,35 @@ class VCC:
 
 		return loss
 
-	def _full_superposition_loss(self, X, y):
-		raise NotImplementedError("Full superposition training is not yet implemented.")
+	def _classical_label_superpositions_loss(self, X, y, shots):
+		raise NotImplementedError("Classical label superpositions loss training is not yet implemented.")
+
+	def _full_superposition_loss(self, X, y, shots):
+		groups = group_by_label(X, y)
+		labels = []
+		circuits = []
+		for label, data in groups.items():
+			feature_circuits = [self._feature_map.bind_parameters(d) for d in data]
+			circuit = combine_to_superposition(feature_circuits)
+			labels.append(label)
+			circuits.append(circuit)
+
+		info_qubits = int(math.log2(len(circuits)))
+		circuit = combine_to_superposition(circuits)
+		circuit = self._add_measure(circuit, info_qubits)
+
+		def loss(parameters):
+			circ = circuit.bind_parameters(parameters)
+			job = self._simulator.run(circ, shots=shots)
+			result = job.result().get_counts()
+			histograms = group_by_info_qubit(result, info_qubits)
+			predicted = [self._label_extractor(hist) for hist in histograms]
+			return self._loss_function(labels, predicted)
+
+		return loss
+
+	def _classical_full_superpositions_loss(self, X, y, shots):
+		raise NotImplementedError("Classical full superpositions loss training is not yet implemented.")
 
 	def _check_if_trained(self):
 		if not self._trained:
@@ -148,6 +180,7 @@ class VCC:
 		return parameter_binds
 
 	def _add_measure(self, circuit, num_info_qubits=0):
+		# TODO see if can be moved to utils
 		info_qubits = list(range(num_info_qubits))
 		targets = list(range(circuit.num_qubits))[-self._ansatz.num_qubits:]
 		c_bits = list(range(num_info_qubits + self._ansatz.num_qubits))
