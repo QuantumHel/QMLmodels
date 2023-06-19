@@ -43,6 +43,9 @@ class VCC:
 		self._circuit.measure(list(range(self._num_qubits)), list(range(self._num_qubits)))
 		self._transpiled_circuit = transpile(self._circuit, self._simulator)
 
+		# This is for counting iterations for scipy that sometimes does not do it.
+		self._training_iteration_counter = 0
+
 	def train(self, X, y, shots = None, training_mode = "normal"):
 		"""
 		TODO
@@ -66,9 +69,23 @@ class VCC:
 			case _:
 				raise ValueError("training_mode has to be 'training_mode', 'label_superpositions', or 'full_superposition'.")
 
-		result = minimize(loss, self._parameters, method=self._optimize_method)
+		self._training_iteration_counter = 0
+		def callback(x, *args):
+			self._training_iteration_counter += 1
+
+		result = minimize(
+			loss,
+			self._parameters,
+			method=self._optimize_method,
+			callback=callback
+		)
+
+		if not hasattr(result, 'nit'):
+			result.nit = self._training_iteration_counter
+
 		self._parameters = result.x
 		self._trained = True
+		return result
 
 	def predict(self, X, shots = None):
 		"""
