@@ -3,6 +3,7 @@ from qiskit.circuit.library import ZZFeatureMap, RealAmplitudes
 from qmlmodels.label_extractors import parity_readout
 from qmlmodels.loss_functions import square_loss
 from qmlmodels import VCC
+import numpy as np
 
 from sklearn.datasets import load_iris
 from sklearn.preprocessing import MinMaxScaler
@@ -21,7 +22,25 @@ num_features = features.shape[1]
 feature_map = ZZFeatureMap(feature_dimension=num_features)
 ansatz = RealAmplitudes(num_qubits=num_features, reps=3)
 shots = 1024
-runs = 1
+runs = 4
+
+
+def run_experiment(training_mode, training_shots):
+	train_accuracy = np.zeros(runs)
+	test_accuracy = np.zeros(runs)
+	iterations = np.zeros(runs)
+	for i in range(runs):
+		vcc = VCC(feature_map, ansatz, parity_readout, square_loss, shots=shots)
+		res = vcc.train(train_features, train_labels, shots=training_shots, training_mode=training_mode)
+		train_accuracy[i] = vcc.accuracy(train_features, train_labels)
+		test_accuracy[i] = vcc.accuracy(test_features, test_labels)
+		iterations[i] = res.nit
+		print(".", end="")
+	print()
+	print(f"Training using '{training_mode}' and {training_shots} shots")
+	print("Train accuracy mean:", np.mean(train_accuracy), ". With std of:", np.std(train_accuracy))
+	print("Test accuracy mean:", np.mean(test_accuracy), ". With std of:", np.std(test_accuracy))
+	print()
 
 # %%
 # Classical SVM
@@ -37,54 +56,15 @@ print(f"Classical SVC on the test dataset:     {svc_test_c4:.2f}")
 
 # %%
 # Normal training
-import numpy as np
-train_accuracy = np.zeros(runs)
-test_accuracy = np.zeros(runs)
-for i in range(runs):
-	vcc = VCC(feature_map, ansatz, parity_readout, square_loss, shots=shots)
-	vcc.train(train_features, train_labels, shots=shots, training_mode="normal")
-	train_accuracy[i] = vcc.accuracy(train_features, train_labels)
-	test_accuracy[i] = vcc.accuracy(test_features, test_labels)
-	print(".", end="")
-print()
-
-print("Training with normal VCC with", shots, "shots")
-print("Train accuracy mean:", np.mean(train_accuracy), ". With std of:", np.std(train_accuracy))
-print("Test accuracy mean:", np.mean(test_accuracy), ". With std of:", np.std(test_accuracy))
-print()
+run_experiment("normal", shots)
 
 # %%
 # Normal training with shot count 1
-train_accuracy = np.zeros(runs)
-test_accuracy = np.zeros(runs)
-for i in range(runs):
-	vcc = VCC(feature_map, ansatz, parity_readout, square_loss, shots=shots)
-	vcc.train(train_features, train_labels, shots=1, training_mode="normal")
-	train_accuracy[i] = vcc.accuracy(train_features, train_labels)
-	test_accuracy[i] = vcc.accuracy(test_features, test_labels)
-	print(".", end="")
-print()
+run_experiment("normal", 1)
 
-print("Training with normal VCC with", 1, "shots")
-print("Train accuracy mean:", np.mean(train_accuracy), ". With std of:", np.std(train_accuracy))
-print("Test accuracy mean:", np.mean(test_accuracy), ". With std of:", np.std(test_accuracy))
-print()
 # %%
 # Label superposition training
-train_accuracy = np.zeros(runs)
-test_accuracy = np.zeros(runs)
-for i in range(runs):
-	vcc = VCC(feature_map, ansatz, parity_readout, square_loss, shots=shots)
-	vcc.train(train_features, train_labels, shots=shots, training_mode="label_superpositions")
-	train_accuracy[i] = vcc.accuracy(train_features, train_labels)
-	test_accuracy[i] = vcc.accuracy(test_features, test_labels)
-	print(".", end="")
-print()
-
-print("Training with label specific superpositions with", shots, "shots")
-print("Train accuracy mean:", np.mean(train_accuracy), ". With std of:", np.std(train_accuracy))
-print("Test accuracy mean:", np.mean(test_accuracy), ". With std of:", np.std(test_accuracy))
-print()
+run_experiment("label_superpositions", shots)
 
 # %%
 # Label superposition training, but superposition is calculated with classical help
@@ -92,10 +72,7 @@ print()
 
 # %%
 # Full superposition training
-vcc = VCC(feature_map, ansatz, parity_readout, square_loss, shots=shots)
-vcc.train(train_features, train_labels, shots=shots, training_mode="full_superposition")
-print(vcc.accuracy(train_features, train_labels))
-print(vcc.accuracy(test_features, test_labels))
+run_experiment("full_superposition", shots)
 
 # %%
 # Full superposition training, but superposition is calculated with classical help
