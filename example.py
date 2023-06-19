@@ -21,7 +21,7 @@ num_features = features.shape[1]
 feature_map = ZZFeatureMap(feature_dimension=num_features)
 ansatz = RealAmplitudes(num_qubits=num_features, reps=3)
 shots = 1024
-runs = 10
+runs = 1
 
 # %%
 # Classical SVM

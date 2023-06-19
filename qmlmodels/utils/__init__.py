@@ -1,3 +1,4 @@
 from qmlmodels.utils.combine_to_superposition import combine_to_superposition
 from qmlmodels.utils.group_by_label import group_by_label
 from qmlmodels.utils.group_by_info_qubit import group_by_info_qubit
+from qmlmodels.utils.combine_circuit import combine_circuit

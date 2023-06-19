@@ -1,7 +1,7 @@
 from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
 from qiskit import Aer, transpile
 from scipy.optimize import minimize
-from qmlmodels.utils import combine_to_superposition, group_by_label, group_by_info_qubit
+from qmlmodels.utils import combine_to_superposition, group_by_label, group_by_info_qubit, combine_circuit
 import random
 import math
 
@@ -100,7 +100,8 @@ class VCC:
 		for label, data in groups.items():
 			feature_circuits = [self._feature_map.bind_parameters(d) for d in data]
 			circuit = combine_to_superposition(feature_circuits)
-			circuit = self._add_measure(circuit)
+			circuit = combine_circuit(circuit, self._ansatz)
+			circuit = transpile(circuit, self._simulator)
 			circuits.append([label, circuit])
 
 		def loss(parameters):
@@ -131,7 +132,8 @@ class VCC:
 
 		info_qubits = int(math.log2(len(circuits)))
 		circuit = combine_to_superposition(circuits)
-		circuit = self._add_measure(circuit, info_qubits)
+		circuit = combine_circuit(circuit, self._ansatz, info_qubits)
+		circuit = transpile(circuit, self._simulator)
 
 		def loss(parameters):
 			circ = circuit.bind_parameters(parameters)
@@ -178,16 +180,3 @@ class VCC:
 				parameter_bind[parameter] = [X[i,index]]
 
 		return parameter_binds
-
-	def _add_measure(self, circuit, num_info_qubits=0):
-		# TODO see if can be moved to utils
-		info_qubits = list(range(num_info_qubits))
-		targets = list(range(circuit.num_qubits))[-self._ansatz.num_qubits:]
-		c_bits = list(range(num_info_qubits + self._ansatz.num_qubits))
-
-		circ = circuit.compose(self._ansatz, qubits=targets)
-		cr = ClassicalRegister(num_info_qubits + self._ansatz.num_qubits)
-		circ.add_bits(cr)
-		circ.measure([*info_qubits, *targets], c_bits)
-		circ = transpile(circ, self._simulator)
-		return circ
