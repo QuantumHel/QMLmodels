@@ -40,6 +40,7 @@ def run_experiment(training_mode, training_shots):
 	print(f"Training using '{training_mode}' and {training_shots} shots")
 	print("Train accuracy mean:", np.mean(train_accuracy), ". With std of:", np.std(train_accuracy))
 	print("Test accuracy mean:", np.mean(test_accuracy), ". With std of:", np.std(test_accuracy))
+	print("Training iterations mean:", np.mean(iterations), ". With std of:", np.std(iterations))
 	print()
 
 # %%
@@ -68,7 +69,7 @@ run_experiment("label_superpositions", shots)
 
 # %%
 # Label superposition training, but superposition is calculated with classical help
-# TODO
+run_experiment("classical_label_superpositions", shots)
 
 # %%
 # Full superposition training

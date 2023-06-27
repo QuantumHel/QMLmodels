@@ -4,6 +4,7 @@ from scipy.optimize import minimize
 from qmlmodels.utils import combine_to_superposition, group_by_label, group_by_info_qubit, combine_circuit
 import random
 import math
+import numpy as np
 
 class VCC:
 	def __init__(
@@ -135,7 +136,48 @@ class VCC:
 		return loss
 
 	def _classical_label_superpositions_loss(self, X, y, shots):
-		raise NotImplementedError("Classical label superpositions loss training is not yet implemented.")
+		groups = group_by_label(X, y)
+
+		def sample_counts(l, count):
+			selected_counts = [0 for _ in list(range(l))]
+			choices = np.random.choice(a=list(range(l)), size=shots, replace=True)
+			for choice in choices:
+				selected_counts[choice] += 1
+			return selected_counts
+
+		def combine_hist(results):
+			qubits = len(list(results[0].keys())[0])
+			result = {}
+			for i in range(2 ** qubits):
+				bit_string = format(i, "b").zfill(qubits)
+				result[bit_string] = 0
+			for res in results:
+				for bit_string, count in res.items():
+					result[bit_string] += count
+			return result
+
+		def loss(parameters):
+			labels = []
+			predicted = []
+			for label, group in groups.items():
+				labels.append(label)
+				selected = sample_counts(len(group), shots)
+
+				results = []
+				for x, count in zip(group, selected):
+					if count < 0: continue
+					circuit = combine_circuit(
+						self._feature_map.bind_parameters(x),
+						self._ansatz.bind_parameters(parameters)
+					)
+					circuit = transpile(circuit, self._simulator)
+					job = self._simulator.run(circuit, shots=count)
+					results.append(job.result().get_counts())
+				predicted.append(self._label_extractor(combine_hist(results)))
+
+			return self._loss_function(labels, predicted)
+
+		return loss
 
 	def _full_superposition_loss(self, X, y, shots):
 		groups = group_by_label(X, y)
@@ -194,6 +236,6 @@ class VCC:
 		parameter_binds = [ansatz_binds.copy() for _ in range(num_samples)]
 		for index, parameter in enumerate(self._feature_map.parameters):
 			for i, parameter_bind in enumerate(parameter_binds):
-				parameter_bind[parameter] = [X[i,index]]
+				parameter_bind[parameter] = [X[i][index]]
 
 		return parameter_binds
