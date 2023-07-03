@@ -78,7 +78,3 @@ run_experiment("classical_label_superpositions", shots)
 # %%
 # Full superposition training
 run_experiment("full_superposition", shots)
-
-# %%
-# Full superposition training, but superposition is calculated with classical help
-# TODO

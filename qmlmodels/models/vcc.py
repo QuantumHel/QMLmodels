@@ -67,8 +67,6 @@ class VCC:
 				loss = self._classical_label_superpositions_loss(X, y, shots)
 			case "full_superposition":
 				loss = self._full_superposition_loss(X, y, shots)
-			case "classical_full_superposition":
-				loss = self._classical_full_superpositions_loss(X, y, shots)
 			case _:
 				raise ValueError("training_mode has to be 'training_mode', 'label_superpositions', or 'full_superposition'.")
 
@@ -215,9 +213,6 @@ class VCC:
 			return self._loss_function(labels, predicted)
 
 		return loss
-
-	def _classical_full_superpositions_loss(self, X, y, shots):
-		raise NotImplementedError("Classical full superpositions loss training is not yet implemented.")
 
 	def _check_if_trained(self):
 		if not self._trained:
