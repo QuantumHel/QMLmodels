@@ -64,6 +64,10 @@ run_experiment("normal", shots)
 run_experiment("normal", 1)
 
 # %%
+# loss per shot
+run_experiment("label_superpositions_per_shot_loss", shots)
+
+# %%
 # Label superposition training
 run_experiment("label_superpositions", shots)
 

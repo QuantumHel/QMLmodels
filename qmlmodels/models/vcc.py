@@ -1,7 +1,7 @@
 from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
 from qiskit import Aer, transpile
 from scipy.optimize import minimize
-from qmlmodels.utils import combine_to_superposition, group_by_label, group_by_info_qubit, combine_circuit
+from qmlmodels.utils import combine_to_superposition, group_by_label, group_by_info_qubit, combine_circuit, per_shot_label_extractor
 import random
 import math
 import numpy as np
@@ -61,6 +61,8 @@ class VCC:
 				loss = self._normal_loss(X, y, shots)
 			case "label_superpositions":
 				loss = self._label_superpositions_loss(X, y, shots)
+			case "label_superpositions_per_shot_loss":
+				loss = self._label_superpositions_loss(X, y, shots, True)
 			case "classical_label_superpositions":
 				loss = self._classical_label_superpositions_loss(X, y, shots)
 			case "full_superposition":
@@ -112,7 +114,7 @@ class VCC:
 			return self._loss_function(y, self._predict(X, parameters, shots))
 		return loss
 
-	def _label_superpositions_loss(self, X, y, shots):
+	def _label_superpositions_loss(self, X, y, shots, per_shot_loss=False):
 		groups = group_by_label(X, y)
 		circuits = []
 		for label, data in groups.items():
@@ -124,14 +126,24 @@ class VCC:
 
 		def loss(parameters):
 			labels = []
-			predicted = []
+			histograms = []
 			for label, circuit in circuits:
 				labels.append(label)
 				circ = circuit.bind_parameters(parameters)
 				job = self._simulator.run(circ, shots=shots)
 				result = job.result().get_counts()
-				predicted.append(self._label_extractor(result))
-			return self._loss_function(labels, predicted)
+				histograms.append(result)
+
+			if per_shot_loss:
+				spread_labels, predicted = per_shot_label_extractor(
+					labels,
+					histograms,
+					self._label_extractor
+				)
+				return self._loss_function(spread_labels, predicted)
+			else:
+				predicted = [self._label_extractor(hist) for hist in histograms]
+				return self._loss_function(labels, predicted)
 
 		return loss
 
